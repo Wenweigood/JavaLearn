@@ -471,8 +471,248 @@ String str2 = "ing"; //常量池
 String str3 = "str" + "ing"; //常量池
 String str4 = str1 + str2; //堆内存
 String str5 = "string"; //常量池
-System.out.println(str3 == str4);//false   堆 ！= 常量池
+System.out.println(str3 == str4);//false   常量池 ！= 堆
 System.out.println(str3 == str5);//true    常量池 == 常量池
-System.out.println(str4 == str5);//false
+System.out.println(str4 == str5);//false   堆 ！= 常量池
+
+
+final String str6 = "str"; //被final修饰的String，编译时可以确定，会优化为常量处理
+final String str7 = "ing"; //被final修饰的String，编译时可以确定，会优化为常量处理
+String c = "str" + "ing"; //常量池
+String d = str1 + str2;  //常量池
+System.out.println(c == d); //true     常量池 == 常量池
 ```
 
+### 异常
+
+<img src="C:\Users\温威\Desktop\java\images\types-of-exceptions-in-java.png" alt="Java 异常类层次结构图" style="zoom:80%;" />
+
+- Throwable：所有异常的祖先
+  - Exception：程序本身可以处理的异常
+    - Checked Exception：受查异常，必须处理
+      - I/O相关异常
+      - ClassNotFoundException
+      - SQLException
+      - ...
+    - Unchecked Exception：非受查异常，可以不处理。包括RuntimeException及其子类
+      - NullPointerException：空指针
+      - IllegalArgumentException：参数错误
+      - NumberFormatException：数值转换错误
+      - ArrayIndexOutOfBoundsException：数组越界
+      - ClassCastException：类型转换错误
+      - ...
+  - Error：程序无法处理的**错误**
+
+```java
+//java.lang.Throwable
+
+/**
+* Returns a short description of this throwable.
+*/
+public String toString();
+    
+/**
+* Prints this throwable and its backtrace to the standard error stream.
+*/
+public void printStackTrace();
+
+/**
+* Returns the detail message string of this throwable.
+*/
+public String getMessage();
+```
+
+#### try、catch和finally
+
+- `try`块：用于捕获异常。其后可接零个或多个 `catch` 块，如果没有 `catch` 块，则必须跟一个 `finally` 块。
+
+- `catch`块：用于处理 try 捕获到的异常。
+
+- `finally` 块：无论是否捕获或处理异常，`finally` 块里的语句都会被执行。当在 `try` 块或 `catch` 块中遇到 `return` 语句时，`finally` 语句块将在方法返回之前被执行
+
+#### try-with-resource
+
+适用任何实现 `java.lang.AutoCloseable`或者 `java.io.Closeable` 的对象
+
+执行顺序：
+
+1. 初始化资源
+2. 执行try
+3. 关闭资源
+4. 执行catch（如有）
+5. 执行finally（如有）
+
+```java
+try (BufferedInputStream bin = new BufferedInputStream(new FileInputStream(new File("test.txt")));
+     BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(new File("out.txt")))) {
+    int b;
+    while ((b = bin.read()) != -1) {
+        bout.write(b);
+    }
+} catch (IOException e) {
+    e.printStackTrace();
+} finally {
+    ...
+}
+```
+
+#### 常见问题
+
+##### finally 中的代码一定会执行吗？
+
+-  finally 之前虚拟机被终止运行的话，finally 中的代码就不会被执行
+- 程序所在的线程死亡
+- 关闭 CPU
+
+### 泛型
+
+**Java 泛型（Generics）** 是 JDK 5 中引入的一个新特性。使用泛型参数，可以增强代码的可读性以及稳定性。编译器可以对泛型参数进行检测，并且通过泛型参数可以指定传入的对象类型
+
+#### 泛型类
+
+```java
+//此处T可以随便写为任意标识，常见的如T、E、K、V等形式的参数常用于表示泛型
+//在实例化泛型类时，必须指定T的具体类型
+public class Generic<T>{
+
+    private T key;
+
+    public Generic(T key) {
+        this.key = key;
+    }
+
+    public T getKey(){
+        return key;
+    }
+}
+```
+
+#### 泛型接口
+
+```java
+public interface Generator<T> {
+    public T method();
+}
+```
+
+#### 泛型方法
+
+```java
+public boolean add(E e) {
+    modCount++;
+    add(e, elementData, size);
+    return true;
+}
+```
+
+静态泛型方法则必须在方法上声明占位符，因为静态方法先于类的实例化，无法使用类上传递的类型
+
+```java
+public static < E > void printArray( E[] inputArray ){
+     for ( E element : inputArray ){
+        System.out.printf( "%s ", element );
+     }
+     System.out.println();
+}
+```
+
+### 反射
+
+Java反射(Reflection)是Java语言的一种强大特性，它允许程序在运行时动态获取类的信息并操作类的属性和方法。反射机制使得程序可以动态地加载、检查和使用类，甚至在运行时改变类的行为。反射的核心思想是：**在运行时而非编译时获取类型信息并操作对象**
+
+核心类：
+
+- Class：表示运行的类或接口
+- Field：类的成员变量（字段）
+- Method：类的方法
+- Constructor：类的构造方法
+- Modifier：提供了检查成员访问修饰符的静态方法
+  - `isPublic()`
+  - `isPrivate()`
+  - `isStatic()`
+  - `isVolatile()`
+  - ...
+
+主要功能：
+
+1. 在运行时判断任意一个对象所属的类
+2. 在运行时构造任意一个类的对象
+3. 在运行时判断任意一个类所具有的成员变量和方法
+4. 在运行时调用任意一个对象的方法
+5. 生成动态代理
+
+```java
+// 通过 JDK 实现动态代理
+public class DebugInvocationHandler implements InvocationHandler {
+    /**
+     * 代理类中的真实对象
+     */
+    private final Object target;
+
+    public DebugInvocationHandler(Object target) {
+        this.target = target;
+    }
+
+    public Object invoke(Object proxy, Method method, Object[] args) throws InvocationTargetException, IllegalAccessException {
+        System.out.println("before method " + method.getName());
+        Object result = method.invoke(target, args);
+        System.out.println("after method " + method.getName());
+        return result;
+    }
+}
+```
+
+### 注解
+
+```java
+// 自定义注解
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface MyAnnotation {
+    String value() default "default";
+    int priority() default 0;
+    boolean enabled() default true;
+}
+
+// 运行时获取注解
+Method method = obj.getClass().getMethod("methodName");
+if(method.isAnnotationPresent(MyAnnotation.class)) {
+    MyAnnotation annotation = method.getAnnotation(MyAnnotation.class);
+    System.out.println(annotation.value());
+}
+```
+
+注解是一种代码级别的说明，可以附加在包、类、方法、字段、局部变量、方法参数等程序元素上，用于对这些元素进行说明和注释
+
+注解的主要作用：
+
+1. **编写文档**：通过代码中的注解生成API文档
+2. **代码分析**：通过注解对代码进行分析（通常结合反射机制）
+3. **编译检查**：让编译器实现基本的编译检查（如@Override）
+4. **配置信息**：替代传统的XML配置文件（如Spring框架中的注解）
+5. **运行时处理**：在程序运行时通过反射读取注解信息
+
+元注解（定义注解的注解）：
+
+- @Retention：保留策略
+  - `RetentionPolicy.SOURCE`：只在源码，会被编译器忽略
+  - `RetentionPolicy.CLASS`：会被编译到`.class`文件中，运行时丢弃
+  - `RetentionPolicy.RUNTIME`：直到运行时仍存在
+- @Target：作用目标
+  - `ElementType.TYPE`：类
+  - `ElementType.FIELD`：字段
+  - `ElementType.METHOD`：方法
+  - `ElementType.PARAMETER`：参数
+  - ...
+- @Documented：标记注解是否包含在Javadoc中
+- @Inherited：标记注解是否可被子类继承
+- @Repeatable：Java8引入，允许在同一元素上重复使用注解
+
+注解的属性类型只能是：
+
+- 基本数据类型
+- String
+- Class
+- 枚举
+- 注解类型
+- 以上类型的数组
