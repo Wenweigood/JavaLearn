@@ -107,7 +107,7 @@ https://openjdk.org/projects/jdk/
     - JVM
     - Java 基础类库（Class Library）：一组标准的类库，提供常用的功能和 API（如 I/O 操作、网络通信、数据结构等）
 
-<img src="/Users/wenwei/Documents/study/java/images/jdk.png" style="zoom:40%;" />
+<img src="./images/jdk.png" style="zoom:40%;" />
 
 #### 字节码（`.class`）
 
@@ -331,7 +331,7 @@ JVM 可以理解的代码就叫做字节码（即扩展名为 `.class` 的文件
   - 创建新对象及其内嵌子对象，新对象与原对象完全独立
   - 递归复制
 
-![](/Users/wenwei/Documents/study/java/images/obj_copy.png)
+![](./images/obj_copy.png)
 
 ### Object
 
@@ -485,7 +485,7 @@ System.out.println(c == d); //true     常量池 == 常量池
 
 ### 异常
 
-<img src="C:\Users\温威\Desktop\java\images\types-of-exceptions-in-java.png" alt="Java 异常类层次结构图" style="zoom:80%;" />
+<img src="./images/types-of-exceptions-in-java.png" alt="Java 异常类层次结构图" style="zoom:80%;" />
 
 - Throwable：所有异常的祖先
   - Exception：程序本身可以处理的异常
@@ -1002,4 +1002,42 @@ class Example{
 
 Java 集合，也叫作容器，主要是由两大接口派生而来：一个是 `Collection`接口，主要用于存放单一元素；另一个是 `Map` 接口，主要用于存放键值对。对于`Collection` 接口，下面又有三个主要的子接口：`List`、`Set` 、 `Queue`
 
-![](/Users/wenwei/Documents/study/java/images/java-collection-hierarchy.png)
+![](./images/java-collection-hierarchy.png)
+
+### Collection
+
+#### List
+
+##### ArrayList
+
+##### Vector
+
+##### LinkedList
+
+##### Stack
+
+#### Set
+
+##### HashSet
+
+##### LinkedHashSet
+
+##### TreeSet
+
+#### Queue
+
+##### PriorityQueue
+
+##### ArrayDeque
+
+##### LinkedList
+
+#### Map
+
+##### HashMap
+
+##### LinkedHashMap
+
+##### Hashtable
+
+##### TreeMap
