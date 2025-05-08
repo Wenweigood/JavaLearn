@@ -716,3 +716,290 @@ if(method.isAnnotationPresent(MyAnnotation.class)) {
 - 枚举
 - 注解类型
 - 以上类型的数组
+
+### SPI
+
+SPI（Service Provider Interface）是Java提供的一种**服务发现机制**，允许第三方为接口提供实现，并在运行时动态加载。其核心思想是**解耦**，将服务接口的定义与具体实现分离，使得系统具备**可插拔性**和**扩展性**
+
+#### 工作原理
+
+- 定义接口（如`DataStorage`）
+- 实现接口（如`MysqlStorage`和`RedisStorage`）
+- 配置服务（`META-INF/services/`路径下写配置文件，内容包含实现类的全限定名）
+- 动态加载（通过`ServiceLoader.load(DataStorage.class)`获取所有实现实例）
+  - **ServiceLoader**：JDK提供的工具类，用于加载和实例化服务实现
+
+#### 应用场景
+
+- **JDBC驱动加载**：通过SPI动态加载不同数据库的驱动（如MySQL、Oracle）
+- **日志框架**：SLF4J通过SPI绑定Logback、Log4j等实现
+- **Spring Boot自动装配**：利用`META-INF/spring.factories`扩展SPI机制
+- **Dubbo服务**：拓展实现，支持按需加载、注解配置
+
+#### API vs SPI
+
+|   **特性**   |       **API**       |          **SPI**           |
+| :----------: | :-----------------: | :------------------------: |
+|  **定义方**  | 服务提供者（如JDK） |    调用方（如JDBC接口）    |
+|   **目的**   |    提供功能调用     |     允许第三方扩展功能     |
+|  **耦合性**  |  调用方依赖提供方   | 提供方依赖调用方的接口规范 |
+| **加载方式** |   直接通过类引用    |     动态配置+反射加载      |
+
+#### SPI使用例子
+
+```java
+// 定义接口
+public interface MyService {
+    void execute();
+}
+
+// 实现类
+public class MyServiceImpl implements MyService {
+    @Override
+    public void execute() {
+        System.out.println("SPI实现被调用");
+    }
+}
+
+// 配置文件：META-INF/services/com.example.MyService
+// 内容：com.example.MyServiceImpl
+
+// 调用SPI
+// 此时load方法并不真正初始化服务提供者列表instantiatedProviders
+ServiceLoader<MyService> services = ServiceLoader.load(MyService.class);
+for (MyService service : services) {
+  	// 在迭代时会真正调用懒加载器LazyClassPathLookupIterator，去前缀为"META-INF/services/"的路径下找配置文件
+    service.execute();
+}
+```
+
+#### 优缺点
+
+- 优点
+  - **解耦**：无需修改代码即可替换实现
+  - **扩展性**：支持动态新增服务
+- 缺点
+  - **性能开销**：需遍历所有实现类
+  - **线程不安全**：`ServiceLoader`非线程安全类
+
+### 序列化和反序列化
+
+**序列化**：将数据结构或对象转换成可以存储或传输的形式，通常是二进制字节流，也可以是 JSON, XML 等文本格式
+
+**反序列化**：将在序列化过程中所生成的数据转换为原始数据结构或者对象的过程
+
+#### 主要场景
+
+1. **网络通信**
+   在分布式系统中，序列化和反序列化用于跨网络传输对象状态。例如，RPC（远程过程调用）和RMI（远程方法调用）通过序列化将方法参数和返回值转换为字节流进行传输。
+2. **数据持久化**
+   将对象序列化后存储到文件或数据库中，实现持久化。例如，Java的`ObjectOutputStream`可将对象保存到文件，重启后通过反序列化恢复对象状态。
+3. **缓存机制**
+   缓存系统（如Redis）通过序列化存储对象，反序列化时快速恢复数据，减少数据库访问。
+4. **跨平台/语言数据交换**
+   使用JSON、XML等通用格式序列化数据，便于不同语言（如Java、Python）的系统间交互。
+5. **消息队列**
+   消息中间件（如Kafka、RabbitMQ）依赖序列化传输消息，消费者通过反序列化解析内容。
+6. 深拷贝对象
+   通过序列化+反序列化实现对象的深度复制，避免引用共享问题。
+7. 配置管理
+   应用程序配置（如Spring的`@ConfigurationProperties`）常序列化为文件，运行时反序列化加载。
+8. 分布式系统状态同步
+   在微服务或云计算中，序列化用于跨节点同步对象状态（如Session共享）
+
+#### 常见序列化协议
+
+|       **协议**        | **体积** | **速度** | **跨语言** | **模式演进** |          **适用场景**          |
+| :-------------------: | :------: | :------: | :--------: | :----------: | :----------------------------: |
+| **Java Serializable** |    大    |    慢    |   仅Java   |      差      | Java进程间通信、临时本地持久化 |
+|       **JSON**        |   中等   |   中等   |    支持    |     一般     |      Web API、移动端通信       |
+|        **XML**        |    大    |    慢    |    支持    |      强      |     复杂数据结构、配置文件     |
+|     **Protobuf**      |    小    |    快    |    支持    |      强      |   微服务（gRPC）、高吞吐场景   |
+|       **Avro**        |    小    |    快    |    支持    |      强      |    Hadoop生态、动态数据处理    |
+|      **Thrift**       |    小    |    快    |    支持    |     一般     |   RPC框架（如Facebook服务）    |
+|      **MsgPack**      |   较小   |    快    |    支持    |      无      |      简单结构、Redis缓存       |
+|      **Hessian**      |   中等   |   中等   |    支持    |     一般     |    传统Java RPC（如Dubbo）     |
+
+> JSON的全称是 **JavaScript Object Notation**（JavaScript 对象表示法），源自JavaScript，但几乎所有编程语言都支持JSON
+
+#### serialVersionUID
+
+**定义**：`serialVersionUID` 是 `Serializable` 接口的静态常量字段（`private static final long`），用于标识类的序列化版本
+
+**作用**：在反序列化时，JVM 通过比较字节流中的 `serialVersionUID` 与本地类的 `serialVersionUID`是否一致，决定是否允许反序列化。若不一致，抛出 `InvalidClassException`
+
+生成方式：
+
+1. 显式：`private static final long serialVersionUID = 1L;`
+2. 隐式：若未显式指定，JVM 会根据类名、方法、字段等计算哈希值，但易因编译环境差异导致版本冲突
+
+### Java的值传递
+
+程序设计语言将实参传递给方法（或函数）的方式分为两种：
+
+- **值传递**：方法接收的是实参值的拷贝，会创建副本
+  - 基本数据类型传值
+  - 引用类型传地址值的拷贝，不影响原始引用
+- **引用传递**：方法接收的直接是实参所引用的对象在堆中的地址，不会创建副本，对形参的修改将影响到实参
+
+很多程序设计语言（比如 C++、 Pascal）提供了两种参数传递的方式，不过，在 Java 中只有值传递
+
+```java
+// 说明值传递的例子
+class Example{
+    @Data
+    @AllArgsConstructor
+    public static class Person {
+        private String name;
+    }
+
+    public static void main(String[] args) {
+        Person a = new Person("a");
+        Person b = new Person("b");
+      	// 传递的其实是地址的值
+        swap(a, b);
+        System.out.println("person a is:" + a.getName());// a
+        System.out.println("person b is:" + b.getName());// b
+    }
+
+    public static void swap(Person a, Person b) {
+        Person tmp = a;
+        a = b;
+        b = tmp;
+        System.out.println("person a is:" + a.getName());// b
+        System.out.println("person b is:" + b.getName());// a
+      	// 如果传递的a、b是引用，那么会使得a指向原b所在实例、b指向原a所在实例
+    }
+}
+```
+
+> 在swap()方法内部，a、b交换后是有影响的；而在swap()之后，main()中的a、b仍然保持不变
+
+#### 设计成值传递的原因
+
+- 安全性
+  - 减少对原始数据的意外修改
+  - 防止通过引用传递导致的内存泄漏或非法访问
+- 简化编程
+  - 统一值传递，降低学习成本
+
+### Unsafe类
+
+> JDK 23已标注绝大部分方法为@Deprecated并将来会被移除
+
+提供了直接操作底层内存、线程、对象等能力，绕过 Java 语言的安全机制，因此被称为“魔法类”或“双刃剑”
+
+- **核心功能**
+  - 内存操作
+    - 直接分配/释放堆外内存
+    - 内存读写
+  - 原子操作
+    - 提供`compareAndSwap` 系列方法
+  - 对象与字段操作
+    - 直接修改对象字段（包括私有字段），通过偏移量（`objectFieldOffset`）绕过访问限制
+    - 不调用构造函数创建对象实例（`allocateInstance`）
+  - 线程调度
+    - 挂起（`park`）和恢复线程（`unpark`），用于实现锁机制
+  - 类与数组操作
+    - 动态类加载、获取数组基地址偏移量（`arrayBaseOffset`）等
+- **使用场景**
+  - 高性能库开发（如 Netty 的 `DirectByteBuffer`，依赖堆外内存管理）
+  - 并发工具（`Atomic` 类、`AQS` 等依赖 CAS 操作）
+  - 自定义序列化（直接读写内存提高性能）
+
+### Java语法糖
+
+指在计算机语言中添加的某种语法，这种语法对语言的功能并没有影响，但是更方便程序员使用
+
+- **泛型**
+
+  - 通过类型擦除，编译时擦除泛型信息，替换为原始类型和强制类型转换，兼容JVM的字节码规范（无泛型）
+
+  - ```java
+    // 源码
+    List<String> list = new ArrayList<>();
+    
+    // 编译后
+    List list = new ArrayList();  // 类型参数被擦除
+    list.add((String)"hello");    // 插入时强制转换
+    ```
+
+- **自动装箱/拆箱**
+
+  - `Integer a = 10;`（自动装箱）和 `int b = a;`（自动拆箱）
+  - 底层原理
+    - 装箱：编译为 `Integer.valueOf(10)`
+    - 拆箱：编译为 `a.intValue()`
+
+- **增强型for循环**
+
+  - ```java
+    // 源码
+    for (String s : list) {
+    	... 
+    }
+    
+    // 编译后替换为迭代器或普通for循环
+    for (Iterator<String> i = list.iterator(); i.hasNext();) {
+        String s = i.next();
+        ...
+    }
+    ```
+
+- **可变参数**
+
+  - `void print(String... args) { ... }`
+
+  - args实际上会被映射为数组，当没有输入时，是一个长度为0的数组
+
+  - ````java
+    print(new String[]{"a", "b"});  // 编译器生成
+    ````
+
+- **字符串拼接**
+
+  - `String s = "a" + "b";`
+
+  - ```java
+    // 编译为 StringBuilder 操作
+    new StringBuilder().append("a").append("b").toString();
+    ```
+
+- **switch表达式支持String**
+
+  - `switch (str) { case "a": ... }`
+
+  - 编译器来说只支持整型比较
+
+  - ```java
+    // 通过 hashCode() 和 equals() 实现，转换为整型比较
+    switch (str.hashCode()) {
+        case 97: if (str.equals("a")) { ... }
+    }
+    ```
+
+- **枚举类型**
+
+  - `enum Color { RED, GREEN }`
+
+  - ```java
+    // 编译为继承 java.lang.Enum 的 final 类，每个枚举值为静态实例
+    public final class Color extends Enum {
+        public static final Color RED = new Color();
+    }
+    ```
+
+- **内部类**
+
+  - `Outer.Inner inner = new Outer.Inner();`
+  - 底层原理：编译为独立的类文件（如 `Outer$Inner.class`），内部类实例会拥有指向外部类实例的引用，通过合成方法（Synthetic Methods）访问外部类私有成员
+
+- **try-with-resource**
+
+- **Lambda表达式**
+
+## 集合
+
+Java 集合，也叫作容器，主要是由两大接口派生而来：一个是 `Collection`接口，主要用于存放单一元素；另一个是 `Map` 接口，主要用于存放键值对。对于`Collection` 接口，下面又有三个主要的子接口：`List`、`Set` 、 `Queue`
+
+![](/Users/wenwei/Documents/study/java/images/java-collection-hierarchy.png)
