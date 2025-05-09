@@ -1006,37 +1006,108 @@ Java 集合，也叫作容器，主要是由两大接口派生而来：一个是
 
 ### Collection
 
-#### List
+#### List（有序、可重复）
 
 ##### ArrayList
 
+- 底层实现：动态数组（`Object[]`），支持随机访问（`O(1)`）
+- 扩容机制：默认初始容量 10，扩容时增长 50%（`newCapacity = oldCapacity + (oldCapacity >> 1)`）
+  - 使用`java.util.Arrays#copyOf(T[], int)`复制数组，底层调用`System.arraycopy`（native，JVM实现），性能接近操作系统级别的内存拷贝
+- 线程不安全
+- 尾部插入/删除`O(1)`，其他插入/删除`O(N)`
+- 任何的元素增加/删除操作会执行`modCount++;`，这是一个专用于迭代器的值，用于指示迭代过程中数组是否有“**结构性**”的变化，一旦这个值变化，迭代器会抛出`ConcurrentModificationException`
+
 ##### Vector
 
+- 底层实现：类似 `ArrayList`，但所有方法用 `synchronized` 修饰，线程安全
+- 扩容机制：
+  - 默认扩容为原容量的 2 倍（`ArrayList` 是 1.5 倍）
+  - 如果设置了`capacityIncrement`，则每次扩容`capacityIncrement`
+- 性能较差（同步开销），推荐用 `CopyOnWriteArrayList` 或 `ConcurrentHashMap` 替代
+  - `CopyOnWriteArrayList`：核心思想是，每次修改操作都加锁创建底层数组的副本，从而实现无锁的读请求，**适合读多写少**
+- 尾部插入/删除`O(1)`，其他插入/删除`O(N)`
+- 同样有`modCount`用于迭代过程中的数组监控
+
 ##### LinkedList
+
+- 底层实现：双向链表（`Node<E>`），无需扩容，不支持随机访问（`O(N)`读写）
+- 头尾插入/删除`O(1)`，中间插入/删除`O(N)`
+- 可以用作栈、队列、双端队列的实现
 
 ##### Stack
 
-#### Set
+- 底层实现：继承自Vector，线程安全但性能较差
+- 替代方案：用 [ArrayDeque](#ArrayDeque)（性能更好）或 [LinkedList](#LinkedList)
+  - `ArrayDeque`：基于动态数组（`Object[]`），使用`head`、`tail`记录头尾元素位置，2倍扩容，线程不安全
+
+#### Set（无序、不可重复）
 
 ##### HashSet
 
+- 底层实现：基于[HashMap](#HashMap)，元素作为[HashMap](#HashMap)的key，value固定塞入空对象`PRESENT = new Object();`
+- 去重依赖`hashcode()`和`equals()`
+- 允许`null`元素
+  - HashMap允许`null`元素，`null`元素的`hashcode = 0`
+- 插入/删除/查找复杂度平均`O(1)`，哈希冲突大时劣化
+
 ##### LinkedHashSet
+
+- 底层实现：继承[HashSet](#HashSet)
+  - 使用[HashSet](#HashSet)的以[LinkedHashMap](#LinkedHashMap)为底层数据结构的构造方法
+  - [LinkedHashMap](#LinkedHashMap)底层维护了双向链表，保留插入顺序
 
 ##### TreeSet
 
-#### Queue
+- 底层实现：基于[TreeMap](#TreeMap)（红黑树），元素作为[TreeMap](#TreeMap)的key，value固定塞入空对象`PRESENT = new Object();`，元素按照自然顺序或指定的`Comparator` 排序
+- 插入/删除/查找复杂度`O(log N)`
+- 除非提供`Comparator`用于`null`元素的比较，否则会抛出`NullPointerException`
+
+#### Queue（按插入顺序有序，可重复）
 
 ##### PriorityQueue
 
+- 底层实现：动态数组`Object[]` + 堆，插入时从最后一个元素开始上浮
+- 默认小顶堆，通过`Comparator`自定义元素优先级
+- 不允许插入`null`元素，即便提供了`Comparator`（区别于[TreeSet](#TreeSet)）
+- 操作开销
+  - 插入`O(log N)`
+  - 查找/删除任意元素`O(N)`（先遍历找到元素`O(N)`，再浮动`O(log N)`）
+  - 获取堆顶`O(1)`，删除堆顶`O(log N)`
+- 线程不安全
+- 适用于任务调度、top K
+
 ##### ArrayDeque
 
-##### LinkedList
+- 底层实现：基于动态数组`Object[]` + 头尾指针（`head`、`tail`）实现的循环数组
+- 头尾插入/删除`O(1)`
+- 替代[Stack](#Stack)或实现队列（仅访问头尾情况下，性能优于[LinkedList](#LinkedList)）
+  - `ArrayDeque`基于数组，访问连续内存；而[LinkedList](#LinkedList)基于链表，不连续
 
-#### Map
+##### [LinkedList](#LinkedList)
+
+> 见List接口下的LinkedList
+
+#### Map（键值对存储）
 
 ##### HashMap
 
+- 底层实现：数组 + 链表/红黑树
+  - JDK 8 以后，拉链法哈希冲突元素达到 8 时转换为红黑树（数组长度<64 则优先扩容）
+    - 数组特点：内存开销小，查找复杂度`O(N)`，插入复杂度`O(1)`，删除复杂度`O(N)`
+    - 红黑树特点：内存开销大，查找复杂度`O(log N)`，插入复杂度`O(log N)`，删除复杂度`O(log N)`
+- 允许`null`
+- 线程不安全
+- 元素超过阈值`threshold = capacity * loadFactor`时扩容
+  - 默认装载因子 `loadFactor=0.75`
+  - 翻倍扩容（`newCapacity = oldCapacity << 1`）
+    - 容量始终为2的幂，方便用位运算（`hash & (capacity - 1)`）替代取模
+  - 重新hash
+    - 单元素节点则直接利用`hash & (capacity - 1)`计算新下标
+    - 多元素节点（链表或树）则利用`hash & oldCap`计算高位bit，若为0则位置不变；若为1则位置变为`原索引+原容量`（平移）
+
 ##### LinkedHashMap
+
+
 
 ##### Hashtable
 
