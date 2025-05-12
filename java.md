@@ -1107,8 +1107,61 @@ Java 集合，也叫作容器，主要是由两大接口派生而来：一个是
 
 ##### LinkedHashMap
 
+- 底层实现：继承HashMap，并通过双向链表维护插入顺序
 
+  - 拓展了HashMap的`HashMap.Node`为`LinkedHashMap.Entry`，增加了前驱和后继指针
+
+    - 重写了`newNode()`方法，将HashMap桶元素从`Node`替换为`Entry`
+    - 每个LinkedHashMap条目既是HashMap中的节点（桶），也是双向链表中的节点
+
+  - 记录头尾节点`head`、`tail`
+
+    > HashMap中的树节点`TreeNode`，没有直接继承`HashMap.Node`，反而是继承了`LinkedHashMap.Entry`，从而可以使得LinkedHashMap发生树化时，仍能维护插入顺序。体现了 Java 集合框架的 **高内聚低耦合** 思想：通过继承层次复用代码，同时保持各模块功能的独立性
+
+- 适用场景：有序遍历或实现缓存
 
 ##### Hashtable
 
+- 底层实现：类似[HashMap](#HashMap)，但所有方法用`synchronized`修饰
+- 线程安全但性能低，推荐使用`ConcurrentHashMap`
+
 ##### TreeMap
+
+- 底层实现：红黑树，按key的自然顺序或者指定的`Comparator`排序
+
+  - ```java
+    //节点
+    static final class Entry<K,V> implements Map.Entry<K,V> {
+            K key;
+            V value;
+            Entry<K,V> left;
+            Entry<K,V> right;
+            Entry<K,V> parent;
+            boolean color = BLACK;
+            ...
+    }
+    ```
+
+  - 红黑树：一种自平衡的二叉查找树，放弃左右子树的绝对平衡来提高**修改**效率
+
+    - 特点
+      - 每个节点是红色或黑色
+      - 根节点是黑色
+      - 每个叶子节点是空节点（NIL），而且是黑色
+      - 如果一个节点是红色，则它的两个子节点都是黑色
+      - 从任一节点到其每个叶子节点的所有路径都包含相同数目的黑色节点
+    - 相比于AVL树
+      - 不要求绝对平衡，但保证`最长路径 ≤ 2×最短路径`
+      - 插入/删除树的旋转次数少（最多3次）
+      - 查询稍慢但整体性能更好，适合频繁修改场景
+    - 查询平均`O(log N)`，最坏`O(2log N)`
+
+- 插入/删除/查找复杂度`O(log N)`
+
+- 支持范围查询
+
+  - `subMap(K fromKey, K toKey)`：返回从fromKey(包含)到toKey(不包含)的子映射
+  - `headMap(K toKey)`：返回所有小于toKey的键值对
+  - `tailMap(K fromKey)`：返回所有大于等于fromKey的键值对
+
+- 线程不安全
